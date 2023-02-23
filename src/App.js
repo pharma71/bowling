@@ -6,16 +6,10 @@ class App extends React.Component {
 
   constructor(props){
 
-    super(props)
+    super(props) 
 
     this.state = {
       pins: [
-        [null,null,null,null],
-        [null,null,null],
-        [null,null],
-        [null]
-      ],
-      zeroKegel: [
         [null,null,null,null],
         [null,null,null],
         [null,null],
@@ -38,83 +32,77 @@ class App extends React.Component {
       result: null,
       hits: 0
     }
+
+    this.zeroKegel=[
+      [null,null,null,null],
+      [null,null,null],
+      [null,null],
+      [null]
+    ];
+
+    this.result = this.result.bind(this)
+    this.wurf = this.wurf.bind(this)
   }
 
   wurf(){
     // simuliere getroffene pins pro wurf
-    return new Promise((resolve) => {
+  
+      let{pins,hits,wurf} = this.state;
 
-      
-      let pins = [...this.state.pins];
-      let hits = this.state.hits;
-      console.log('werfe',pins)
-      pins.forEach((element,reihe) => {
-        element.forEach((elem,pin) => {
-          if(!elem){
-            let result = Math.random();
-            let treffer = result > 0.5 ? true : null;
-            if(treffer){
-              pins[reihe][pin] = treffer;
-              hits = hits +1;
-            }
-          } 
-        })
-      });
-      console.log('speichere pins',pins)
+      if(wurf<3){
+
+        pins.forEach((element,reihe) => {
+          element.forEach((elem,pin) => {
+            if(!elem){
+              let result = Math.random();
+              let treffer = result > 0.5 ? true : null;
+              if(treffer){
+                pins[reihe][pin] = treffer;
+                hits ++;
+              }
+            } 
+          })
+        });
+        
+      }
+
       this.setState({
         pins: pins,
         hits: hits
-      },resolve(hits))
-    }); 
+      },()=>this.result())
+ 
   }
 
   result(){
     // ergebnis des wurfes (strike, spare)
     
-    let {wurf,hits,result} = this.state;
+    let {wurf,result,hits,pins,frames,currentFrame} = this.state;
+    
+    if(wurf === 2){
 
-    if(wurf<3){
-      this.wurf()
-      .then((treffer)=>{
-        console.log('neuer wurf',this.state.zeroKegel,this.state.pins);
-        hits = treffer;
-        if(wurf === 1 && hits === 10){
-          result = 'Strike'
-        }
-        else if(wurf === 2 && hits === 10){
-          result = 'Spare'
-        }
-        else{
-          result = hits;
-        }
-        wurf = wurf +1;
-        this.setState({
-          wurf: wurf,
-          result: result
-        })
-      })
-    }else{
-
-      let  frames = this.state.frames;
-      frames[this.state.currentFrame] = this.state.hits;
-      const pins = [...this.getZeroPins()];
-      let currentFrame= this.state.currentFrame;
-      currentFrame = currentFrame +1;
-
-      this.setState({
-        pins: [
-          [null,null,null,null],
-          [null,null,null],
-          [null,null],
-          [null]
-        ],
-        hits: 0,
-        currentFrame: currentFrame,
-        result: null,
-        wurf: 1,
-        frames: frames
-      },()=>console.log('neuer Frame',this.state.zeroKegel,this.state.pins))
+      result = (hits === 10) ? 'Spare' : hits
+      frames[this.state.currentFrame] = hits;
+      hits = 0;
+      currentFrame ++;
+      wurf = 1;
+      result = null;
+      pins = this.getZeroPins()
+    }else if(wurf === 1){
+      
+      result = (hits === 10) ? 'Strike' : hits 
+      wurf ++;
     }
+       
+
+    this.setState({
+      pins: pins,
+      hits: hits,
+      currentFrame: currentFrame,
+      result: result,
+      wurf: wurf,
+      frames: frames
+    },()=>{})
+   
   }
 
   reset(){
@@ -145,7 +133,12 @@ class App extends React.Component {
   }
 
   getZeroPins(){
-    return this.state.zeroKegel;
+    return [
+      [null,null,null,null],
+      [null,null,null],
+      [null,null],
+      [null]
+    ]; 
   }
 
   render(){
@@ -155,7 +148,7 @@ class App extends React.Component {
       <Frames 
         frame={this.state.currentFrame}
         frames={this.state.frames}
-        handleClick={() => this.result()}
+        handleClick={() => this.wurf()}
         handleReset={() => this.reset()}
         wurf={this.state.wurf}
       />
@@ -166,27 +159,27 @@ class App extends React.Component {
   }
 }
 
-function Frames(props){
+function Frames({wurf, frames, frame, handleClick, handleReset}){
+
   // stelle 10 frames dar bei 2 wurf pro spieler
-  let durchgang = props.wurf;
-  durchgang = durchgang < 3 ? 'Wurf: ' + durchgang : 'Next Frame';
-  const frames = props.frames;
+  let durchgang = wurf < 3 ? 'Wurf: ' + wurf : 'Next Frame';
   let frameCells = [];
   let resultCells = [];
   let total = 0;
+
   Object.keys(frames).forEach((element,index)=>{
-    frameCells.push(<td>{element}</td>);
-    resultCells.push(<td>{frames[element]}</td>);
+    frameCells.push(<td key={index}>{element}</td>);
+    resultCells.push(<td key={index}>{frames[element]}</td>);
     total = total + parseInt(frames[element]);
   })
-    frameCells.push(<td>Total</td>);
-    resultCells.push(<td>{total}</td>)
+    frameCells.push(<td key="overview">Total</td>);
+    resultCells.push(<td key="total">{total}</td>)
 
   return(
     <div>
-      Current Frame: {props.frame}&nbsp;&nbsp;
-      <button onClick={props.handleClick}>{durchgang}</button>
-      <button onClick={props.handleReset}>Reset</button>
+      Current Frame: {frame > 10 ? 'End of Game' : frame}&nbsp;&nbsp;
+      <button disabled={frame > 10 ? 'disabled' : ''} onClick={handleClick}>{durchgang}</button>
+      <button onClick={handleReset}>Reset</button>
       <div>
         <table style={{border: '1px solid red', marginLeft: 'auto', marginRight: 'auto'}}>
           <thead></thead>
